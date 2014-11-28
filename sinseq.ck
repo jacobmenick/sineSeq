@@ -80,52 +80,64 @@ e.set( 0::ms, 0.1::ms, 0, 0.001::ms );
 
 SinOsc oscillators[7];
 
-int i;
+// 7 Oscillators indexed 0-6
+// Assign frequencies to each oscillator. 
 for (0 => int i; i < 7; i++) {
     .2 => oscillators[i].gain;
     freqs[i] => oscillators[i].freq;
 }
 
-//oscillators[0] => e => dac;
-//oscillators[1] => e => dac;
-//oscillators[5] => e => dac;
+// Beat duration is according to bpm. 
 bpmToms(bpm) => float beatDur;
 
+// initialize beatCounter at 0. 
 -1 => int beatCounter;
+
+// The sequence state is a 3D array. 
+// First component (0 - 15): Column (beat) number
+// Second component (0 - 7): Scale position
+// Third component (0 or 1): Off or on. 
 int seqState[16][8][1];
 clear_all();
 
-// loop state variables
+// event state variables
+// ‘x’ holds the column number of a button event.
+// ‘y’ holds the row number.
+// ’s’ holds whether or not it is a depression or release. 
 int x, y, s;
 
 while (true) {
-    
+    // Take any button push events and alter the state accordingly. 
     while (oe.nextMsg() != 0) {
         oe.getInt() => x;
         oe.getInt() => y;
         oe.getInt() => s;
-        
+      
         if (s == 1 && x < width && y < height) {
-            if (seqState[x][y+1][0] == 0) {
-                1 => seqState[x][y+1][0];
-                led_set(x, y, 1);
-                
-            } else {
-                0 => seqState[x][y+1][0];
-                led_set(x, y, 0);
-                
+            if (seqState[x][y][0] == 0) {
+                if (y > 0) {
+                    1 => seqState[x][y][0];
+                    led_set(x, y, 1);
+                }
+            } else if (seqState[x][y][0] == 1) {
+                if (y > 0) {
+                    0 => seqState[x][y][0];
+                    led_set(x, y, 0);
+                }
             }
-        } 
+        }
     }
-    
+    // Kill the led of the previous beatcounter position.
+    led_set(beatCounter, 0, 0);
+    // Increment the beatcounter mod 16.
     (beatCounter + 1) %16 => beatCounter;
-    <<<beatCounter>>>;
+    // Illuminate the led of the beatcounter position in the current row. 
     led_set(beatCounter, 0, 1);
-    led_set(16- (16 - (beatCounter - 1)%16)%16, 0, 0);
-    for (0 => int i; i < 7; i++) {
-        if (seqState[beatCounter][i+1][0] == 1) {
-            oscillators[i] => e => dac;
-        } else {
+    <<<beatCounter>>>;
+    for (0 => int i; i <= 7; i++) {
+        // If a note is triggered, send it to the dac (through the envelope). 
+        if (seqState[beatCounter][i][0] == 1) {
+            oscillators[i -1] => e => dac;
         }
     }
     e.keyOn(); 
