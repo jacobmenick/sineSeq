@@ -91,7 +91,7 @@ for (0 => int i; i < 7; i++) {
 bpmToms(bpm) => float beatDur;
 
 // initialize beatCounter at 0. 
--1 => int beatCounter;
+0 => int beatCounter;
 
 // The sequence state is a 3D array. 
 // First component (0 - 15): Column (beat) number
@@ -107,43 +107,67 @@ clear_all();
 int x, y, s;
 
 while (true) {
-    // Take any button push events and alter the state accordingly. 
     while (oe.nextMsg() != 0) {
         oe.getInt() => x;
         oe.getInt() => y;
         oe.getInt() => s;
-      
+        
         if (s == 1 && x < width && y < height) {
             if (seqState[x][y][0] == 0) {
-                if (y > 0) {
-                    1 => seqState[x][y][0];
-                    led_set(x, y, 1);
-                }
+                1 => seqState[x][y][0];
+                led_set(x, y, 1);
             } else if (seqState[x][y][0] == 1) {
-                if (y > 0) {
-                    0 => seqState[x][y][0];
-                    led_set(x, y, 0);
-                }
+                0 => seqState[x][y][0];
+                led_set(x, y, 0);
             }
         }
     }
-    // Kill the led of the previous beatcounter position.
-    led_set(beatCounter, 0, 0);
-    // Increment the beatcounter mod 16.
-    (beatCounter + 1) %16 => beatCounter;
-    // Illuminate the led of the beatcounter position in the current row. 
-    led_set(beatCounter, 0, 1);
-    <<<beatCounter>>>;
-    for (0 => int i; i <= 7; i++) {
-        // If a note is triggered, send it to the dac (through the envelope). 
-        if (seqState[beatCounter][i][0] == 1) {
-            oscillators[i -1] => e => dac;
+    // Include play/restart button. 
+    if (seqState[15][0][0] == 1) {
+        while (true) {
+            // Take any button push events and alter the state accordingly. 
+            while (oe.nextMsg() != 0) {
+                oe.getInt() => x;
+                oe.getInt() => y;
+                oe.getInt() => s;
+                
+                if (s == 1 && x < width && y < height) {
+                    if (seqState[x][y][0] == 0) {
+                        1 => seqState[x][y][0];
+                        led_set(x, y, 1);
+                    } else if (seqState[x][y][0] == 1) {
+                        0 => seqState[x][y][0];
+                        led_set(x, y, 0);
+                    }
+                }
+            }
+            // Kill the led of the previous beatcounter position if it has zero state. 
+            if (seqState[beatCounter][0][0] == 0) {
+                led_set(beatCounter, 0, 0);
+            }
+            // Increment the beatcounter mod 16.
+            (beatCounter + 1) %16 => beatCounter;
+            // Illuminate the led of the beatcounter position in the current row. 
+            led_set(beatCounter, 0, 1);
+            <<<beatCounter>>>;
+            for (1 => int i; i <= 7; i++) {
+                // If a note is triggered, send it to the dac (through the envelope). 
+                if (seqState[beatCounter][i][0] == 1) {
+                    oscillators[i -1] => e => dac;
+                }
+            }
+            e.keyOn(); 
+            beatDur::ms => now;
+            e.keyOff();
+            disconnect();
+            if (seqState[15][0][0] == 0) {
+                led_set(beatCounter, 0, 0);
+                0 => beatCounter;
+                int seqState[15][8][1];
+                break;
+            }
         }
     }
-    e.keyOn(); 
-    beatDur::ms => now;
-    e.keyOff();
-    disconnect();
 }
 
 
