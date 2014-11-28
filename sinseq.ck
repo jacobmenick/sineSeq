@@ -73,10 +73,10 @@ freqs[0]*3/2 => freqs[4];
 freqs[0]*5/3 => freqs[5];
 freqs[0]*30/16 => freqs[6];
 
-// env.
-ADSR e;
-e.set( 0::ms, 0.1::ms, 0, 0.001::ms );
-.0001 => e.decayRate;
+// envelopes.
+ADSR synthEnv;
+synthEnv.set( 0::ms, 0.1::ms, 0, 0.001::ms );
+.0001 => synthEnv.decayRate;
 
 SinOsc oscillators[7];
 
@@ -98,6 +98,7 @@ bpmToms(bpm) => float beatDur;
 // Second component (0 - 7): Scale position
 // Third component (0 or 1): Off or on. 
 int seqState[16][8][1];
+int drumState[16][8][1];
 clear_all();
 
 // event state variables
@@ -125,6 +126,9 @@ while (true) {
     // Include play/restart button. 
     if (seqState[15][0][0] == 1) {
         while (true) {
+            // Illuminate the led of the beatcounter position in the current row. 
+            led_set(beatCounter, 0, 1);
+            <<<beatCounter>>>;
             // Take any button push events and alter the state accordingly. 
             while (oe.nextMsg() != 0) {
                 oe.getInt() => x;
@@ -141,24 +145,17 @@ while (true) {
                     }
                 }
             }
-            // Kill the led of the previous beatcounter position if it has zero state. 
-            if (seqState[beatCounter][0][0] == 0) {
-                led_set(beatCounter, 0, 0);
-            }
-            // Increment the beatcounter mod 16.
-            (beatCounter + 1) %16 => beatCounter;
-            // Illuminate the led of the beatcounter position in the current row. 
-            led_set(beatCounter, 0, 1);
-            <<<beatCounter>>>;
+
+
             for (1 => int i; i <= 7; i++) {
                 // If a note is triggered, send it to the dac (through the envelope). 
                 if (seqState[beatCounter][i][0] == 1) {
-                    oscillators[i -1] => e => dac;
+                    oscillators[i -1] => synthEnv => dac;
                 }
             }
-            e.keyOn(); 
+            synthEnv.keyOn(); 
             beatDur::ms => now;
-            e.keyOff();
+            synthEnv.keyOff();
             disconnect();
             if (seqState[15][0][0] == 0) {
                 led_set(beatCounter, 0, 0);
@@ -166,6 +163,12 @@ while (true) {
                 int seqState[15][8][1];
                 break;
             }
+            // Kill the led of the previous beatcounter position if it has zero state. 
+            if (seqState[beatCounter][0][0] == 0) {
+                led_set(beatCounter, 0, 0);
+            }
+            // Increment the beatcounter mod 16.
+            (beatCounter + 1) %16 => beatCounter;
         }
     }
 }
@@ -196,7 +199,7 @@ fun void clear_all() {
 
 fun void disconnect() {
     for (0 => int i; i < 7; i++) {
-        oscillators[i] =< e;
-        e =< dac;
+        oscillators[i] =< synthEnv;
+        synthEnv =< dac;
     }
 }
