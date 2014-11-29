@@ -2,7 +2,7 @@
     "/sinseq" => string prefix;
     
     // Initial send and reveive
-    OscSend xmit;
+    OscSend xmit; 
     xmit.setHost("localhost", 12002);
     
     OscRecv recv;
@@ -61,7 +61,7 @@
 
 // Set up parameters of application.
 261.6 => float middleC;
-480.0 => float bpm;
+70.0 => float bpm;
 
 // maj scale frequencies
 float freqs[7];
@@ -78,7 +78,27 @@ ADSR synthEnv;
 synthEnv.set( 0::ms, 0.1::ms, 0, 0.001::ms );
 .0001 => synthEnv.decayRate;
 
+
+
 SinOsc oscillators[7];
+string samplefns[7]; 
+SndBuf buffers[7];
+
+me.sourceDir()+"/samples/ddBD18.wav" => samplefns[0];
+me.sourceDir()+"/samples/ddClP18.wav" => samplefns[1];
+me.sourceDir()+"/samples/ddHH3.wav" => samplefns[2];
+me.sourceDir()+"/samples/808oh.aif" => samplefns[3];
+me.sourceDir()+"/samples/v1SH3.wav" => samplefns[4];
+me.sourceDir()+"/samples/wvRM11.wav" => samplefns[5];
+me.sourceDir()+"/samples/rustieSNR.wav" => samplefns[6];
+// Assign sample names to buffers.
+for (0 => int i; i < 7; i++) {
+    samplefns[i] => buffers[i].read;
+    .5 => buffers[i].gain;
+    if (i >= 6) {
+        .2 => buffers[i].gain;
+    }
+}
 
 // 7 Oscillators indexed 0-6
 // Assign frequencies to each oscillator. 
@@ -98,8 +118,13 @@ bpmToms(bpm) => float beatDur;
 // Second component (0 - 7): Scale position
 // Third component (0 or 1): Off or on. 
 int seqState[16][8][1];
+
+// Tells whether we are editing (displaying, resp.) drum or synth mode. 
+int mode; // 0 - synth, 1 - drums
+
+// If we are in drum mode, we are editing drum mode. 
 int drumState[16][8][1];
-clear_all();
+clear_leds();
 
 // event state variables
 // ‘x’ holds the column number of a button event.
@@ -112,48 +137,96 @@ while (true) {
         oe.getInt() => x;
         oe.getInt() => y;
         oe.getInt() => s;
-        
+        if (x == 14 && y == 0 && s == 1) {
+            if (mode == 0) {
+                1 => mode;
+                showSynth();
+                led_set(14, 0, 1);
+            } else if (mode == 1) {
+                0 => mode;
+                showDrums();
+                led_set(14, 0, 0);
+            }
+        }
         if (s == 1 && x < width && y < height) {
-            if (seqState[x][y][0] == 0) {
-                1 => seqState[x][y][0];
-                led_set(x, y, 1);
-            } else if (seqState[x][y][0] == 1) {
-                0 => seqState[x][y][0];
-                led_set(x, y, 0);
+            if (mode == 0 || y == 0) {
+                if (seqState[x][y][0] == 0) {
+                    1 => seqState[x][y][0];
+                    led_set(x, y, 1);
+                } else if (seqState[x][y][0] == 1) {
+                    0 => seqState[x][y][0];
+                    led_set(x, y, 0);
+                }
+            } else if (mode == 1) {
+                if (drumState[x][y][0] == 0) {
+                    1 => drumState[x][y][0];
+                    led_set(x, y, 1);
+                } else if (drumState[x][y][0] == 1) {
+                    0 => drumState[x][y][0];
+                    led_set(x, y, 0);
+                }
+
             }
         }
     }
     // Include play/restart button. 
     if (seqState[15][0][0] == 1) {
+        led_set(15, 0, 1);
         while (true) {
             // Illuminate the led of the beatcounter position in the current row. 
             led_set(beatCounter, 0, 1);
             <<<beatCounter>>>;
+            <<<mode>>>;
             // Take any button push events and alter the state accordingly. 
             while (oe.nextMsg() != 0) {
                 oe.getInt() => x;
                 oe.getInt() => y;
                 oe.getInt() => s;
-                
+                if (x == 14 && y == 0 && s == 1) {
+                    if (mode == 0) {
+                        1 => mode;
+                        showDrums();
+                        led_set(14, 0, 1);
+                    } else if (mode == 1) {
+                        0 => mode;
+                        showSynth();
+                        led_set(14, 0, 0);
+                    }
+                }
                 if (s == 1 && x < width && y < height) {
-                    if (seqState[x][y][0] == 0) {
-                        1 => seqState[x][y][0];
-                        led_set(x, y, 1);
-                    } else if (seqState[x][y][0] == 1) {
-                        0 => seqState[x][y][0];
-                        led_set(x, y, 0);
+                    if (mode == 0 || y == 0) {
+                        if (seqState[x][y][0] == 0) {
+                            1 => seqState[x][y][0];
+                            led_set(x, y, 1);
+                        } else if (seqState[x][y][0] == 1) {
+                            0 => seqState[x][y][0];
+                            led_set(x, y, 0);
+                        }
+                    } else if (mode == 1) {
+                        if (drumState[x][y][0] == 0) {
+                            1 => drumState[x][y][0];
+                            led_set(x, y, 1);
+                        } else if (drumState[x][y][0] == 1) {
+                            0 => drumState[x][y][0];
+                            led_set(x, y, 0);
+                        }
+                        
                     }
                 }
             }
-
-
+            
             for (1 => int i; i <= 7; i++) {
                 // If a note is triggered, send it to the dac (through the envelope). 
                 if (seqState[beatCounter][i][0] == 1) {
                     oscillators[i -1] => synthEnv => dac;
                 }
+                if (drumState[beatCounter][i][0] == 1) {
+                    0 => buffers[i - 1].pos;
+                    buffers[i - 1] => dac; 
+                }
             }
             synthEnv.keyOn(); 
+
             beatDur::ms => now;
             synthEnv.keyOff();
             disconnect();
@@ -177,12 +250,32 @@ while (true) {
 
 
 
-// fun void go(float bpm, OscEvent oe, int ss[][][]) {} 
-//fun void buttonListen(OscEvent oe,int ss[][][]) {}
+
+fun void showSynth() {
+    clear_leds();
+    for (0 => int i; i < 16; i++) {
+        for (0 => int j; j < 7; j++) {
+            if (seqState[i][j][0] == 1) {
+                led_set(i, j, 1);
+            }
+        }
+    }
+}
+
+fun void showDrums() {
+    clear_leds();
+    for (0 => int i; i < 16; i++) {
+        for (0 => int j; j < 7; j++) {
+            if (drumState[i][j][0] == 1) {
+                led_set(i, j, 1);
+            }
+        }
+    }
+}
 
 // funcs
 fun float bpmToms(float bpm) {
-    return 1/(bpm/60/1000);
+    return 1/(bpm/60/1000)/4;
 }
 
 fun void led_set(int x, int y, int s) {
@@ -197,9 +290,18 @@ fun void clear_all() {
     0 => xmit.addInt;
 }
 
+fun void clear_leds() {
+    for (0 => int i; i < 15; i++) {
+        for (0 => int j; j < 7; j++) {
+            led_set(i, j, 0);
+        }
+    }
+}
+
 fun void disconnect() {
     for (0 => int i; i < 7; i++) {
         oscillators[i] =< synthEnv;
+        buffers[i] =< dac;
         synthEnv =< dac;
     }
 }
