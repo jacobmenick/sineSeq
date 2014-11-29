@@ -1,0 +1,21 @@
+sineSeq: A simple sequencer. 
+
+To run the program, do the following: 
+1.  Open miniAudicle
+2.  Open the program sinseq.ck
+3.  Start the virtual machine
+4.  Click 'Add Shred', the green 'plus' button in the top left of the IDE.
+
+Then we're rolling! 
+
+Press the top-right-corner button to begin looping (or to pause/restart).  
+The 0-th row blinks according to the loop position.
+
+You begin in synth mode. 
+- Each row (excluding the zero'th row, for the loop pos) provides a note in the major scale (in C major by default. You can change this by editing oscillator frequencies). 
+- Press a button in the row to have that note play at the point in the sequence indicated by the column number. 
+
+To switch to drum mode, hit the button to the left of the play/pause button.
+This button toggles back and forth between modes to your heart's desire. 
+
+
