@@ -61,7 +61,7 @@
 
 // Set up parameters of application.
 261.6 => float middleC;
-70.0 => float bpm;
+120.0 => float bpm;
 
 // maj scale frequencies
 float freqs[7];
@@ -84,19 +84,19 @@ SinOsc oscillators[7];
 string samplefns[7]; 
 SndBuf buffers[7];
 
-me.sourceDir()+"/samples/ddBD18.wav" => samplefns[0];
+me.sourceDir()+"/samples/808BD1.aif" => samplefns[0];
 me.sourceDir()+"/samples/ddClP18.wav" => samplefns[1];
 me.sourceDir()+"/samples/ddHH3.wav" => samplefns[2];
 me.sourceDir()+"/samples/808oh.aif" => samplefns[3];
 me.sourceDir()+"/samples/v1SH3.wav" => samplefns[4];
 me.sourceDir()+"/samples/wvRM11.wav" => samplefns[5];
-me.sourceDir()+"/samples/rustieSNR.wav" => samplefns[6];
+me.sourceDir()+"/samples/v1BNG3.wav" => samplefns[6];
 // Assign sample names to buffers.
 for (0 => int i; i < 7; i++) {
     samplefns[i] => buffers[i].read;
     .5 => buffers[i].gain;
-    if (i >= 6) {
-        .2 => buffers[i].gain;
+    if (i == 4) {
+        .05 => buffers[i].gain;
     }
 }
 
@@ -137,6 +137,7 @@ while (true) {
         oe.getInt() => x;
         oe.getInt() => y;
         oe.getInt() => s;
+        // Switch mode. 
         if (x == 14 && y == 0 && s == 1) {
             if (mode == 0) {
                 1 => mode;
@@ -148,6 +149,18 @@ while (true) {
                 led_set(14, 0, 0);
             }
         }
+        // Increment BPM
+        if (x == 13 && y == 0 && s == 1) {
+            bpm + 10 => bpm;
+            bpmToms(bpm) => beatDur;
+        }
+
+        // Decrement BPM
+        if (x == 12 && y == 0 && s == 1) {
+            bpm - 10 => bpm;
+            bpmToms(bpm) => beatDur;
+        }
+
         if (s == 1 && x < width && y < height) {
             if (mode == 0 || y == 0) {
                 if (seqState[x][y][0] == 0) {
@@ -192,6 +205,16 @@ while (true) {
                         showSynth();
                         led_set(14, 0, 0);
                     }
+                }
+                if (x == 13 && y == 0 && s == 1) {
+                    bpm + 10 => bpm;
+                    bpmToms(bpm) => beatDur;
+                }
+                
+                // Decrement BPM
+                if (x == 12 && y == 0 && s == 1) {
+                    bpm - 10 => bpm;
+                    bpmToms(bpm) => beatDur;
                 }
                 if (s == 1 && x < width && y < height) {
                     if (mode == 0 || y == 0) {
@@ -254,7 +277,7 @@ while (true) {
 fun void showSynth() {
     clear_leds();
     for (0 => int i; i < 16; i++) {
-        for (0 => int j; j < 7; j++) {
+        for (0 => int j; j <= 7; j++) {
             if (seqState[i][j][0] == 1) {
                 led_set(i, j, 1);
             }
@@ -265,7 +288,7 @@ fun void showSynth() {
 fun void showDrums() {
     clear_leds();
     for (0 => int i; i < 16; i++) {
-        for (0 => int j; j < 7; j++) {
+        for (0 => int j; j <= 7; j++) {
             if (drumState[i][j][0] == 1) {
                 led_set(i, j, 1);
             }
@@ -292,7 +315,7 @@ fun void clear_all() {
 
 fun void clear_leds() {
     for (0 => int i; i < 15; i++) {
-        for (0 => int j; j < 7; j++) {
+        for (0 => int j; j <= 7; j++) {
             led_set(i, j, 0);
         }
     }
