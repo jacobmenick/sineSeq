@@ -7,5 +7,7 @@ The monome connection code is copied from life2013.ck, a conway's game implement
 
 See help.txt for instructions. 
 
+Note: This project is done in my capacity as a music hacker, not as a programmer. So please understand a total disregard for proper practice (e.g. global variables everywhere, functions that make assumptions about state, etc.)
+
 
 
